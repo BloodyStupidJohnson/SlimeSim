@@ -8,15 +8,18 @@
 
 // Preferences and prepaconstrations
 
-const int windowWidth = 1920, windowHeight = 1080;
-const int AGENTS_NUMBER = 30000;
+const int windowWidth = 512, windowHeight = 512;
+const bool fullScreen = false;
+const bool renderTexture = true;
+const int AGENTS_NUMBER = 10000;
+const int SPAWN_TYPE = 3; //RGB_TRI, RGB_CIRCLES, BW
 const int AGENT_SPEED = 1;
-const int SENSOR_LENGTH = 7; // MUST be greater than SENSOR_SIZE
+const int SENSOR_LENGTH = 8; // MUST be greater than SENSOR_SIZE
 const int SENSOR_SIZE = 2; //MUST be even
 const double SENSOR_ANGLE = M_PI/4;
-const int EDGE_L = windowHeight*0.01;
+const int EDGE_L = 0;
 const double TURN_ANGLE = M_PI/8;
-const float TURN_RAND = 0;
+const float TURN_RAND = 1.3;
 const float EVAPO_RATE = 0.997;
 
 
@@ -24,6 +27,7 @@ const float EVAPO_RATE = 0.997;
 const sf::Color COLOR_BLUE(1,1,255);
 const sf::Color COLOR_RED(255,1,1);
 const sf::Color COLOR_GREEN(1,255,1);
+const sf::Color COLOR_WHITE(255,255,255);
 const sf::Color BG_COLOR(0,0,0);
 
 //======Moss colors======================
@@ -34,6 +38,7 @@ const sf::Color BG_COLOR(0,0,0);
 
 static std::default_random_engine e;
 static std::uniform_real_distribution<> dis(0, 1);
+
 
 float randomValue(float min = -1, float max = 1, bool allowMiddle = false );
 
@@ -67,27 +72,6 @@ class Agent
 
     void move(int windowWidth, int windowHeight)
     {
-        if (x > windowWidth - EDGE_L)
-        {
-            x = windowWidth - EDGE_L - 10;
-            vx -= vx;
-        }
-        if  (x < EDGE_L)
-        {
-            x = EDGE_L + 10;
-            vx -= vx;
-        }
-        if (y > windowHeight - EDGE_L)
-        {
-            y = windowHeight - EDGE_L - 10;
-            vy -= vy;
-        }
-        if  (y < EDGE_L)
-        {
-            y = EDGE_L + 1;
-            vy -= vy;
-        }
-        
         if (sqrt(pow(vx,2) + pow(vy,2)) <= 0.5)
         {
             vx = randomValue();
@@ -104,6 +88,22 @@ class Agent
 
         x += vx;
         y += vy;
+        if (x > windowWidth - 1 - EDGE_L)
+        {
+            x = EDGE_L;
+        }
+        if  (x < EDGE_L)
+        {
+            x = windowWidth - 1 - EDGE_L;
+        }
+        if (y > windowHeight - 1 - EDGE_L)
+        {
+            y = EDGE_L ;
+        }
+        if  (y < EDGE_L)
+        {
+            y = windowHeight - 1 - EDGE_L;
+        }
     }
 
     void search(sf::Image& image, sf::Color clr)
@@ -127,7 +127,6 @@ class Agent
 
         if ((cvl == cvr) && (cvl*cvr !=0))
         {
-            
             int rsd = randomValue();
 
             vx = pvx*cos(rsd*TURN_ANGLE) - pvy*sin(rsd*TURN_ANGLE);
@@ -144,10 +143,9 @@ class Agent
         {
                 vx = (pvx*cos(TURN_ANGLE) - pvy*sin(TURN_ANGLE));
                 vy = (pvy*cos(TURN_ANGLE) + pvx*sin(TURN_ANGLE));
-            }   
+            }
         }
         }
-        
     }
 
 };
@@ -198,19 +196,45 @@ class Swarm
 
 int main()
 {
+    e.seed(time(0));
     int itercounter = 0;
     time_t start;
     double alltime = 0;
-
-    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "ITS ALIIIIVE!",sf::Style::Fullscreen); //sf::Style::Fullscreen
+    sf::RenderWindow window;
+    
+    std::vector<Swarm> swarms;
+    int SwarmCtr;
+    
+    if (fullScreen)
+    {
+        window.create(sf::VideoMode(windowWidth, windowHeight), "ITS ALIIIIVE!",sf::Style::Fullscreen); //sf::Style::Fullscreen
+    }
+    else
+    {
+        window.create(sf::VideoMode(windowWidth, windowHeight), "ITS ALIIIIVE!"); //sf::Style::Fullscreen
+    }
+    
+    
     std::vector<Agent> agents;
     
     sf::Image MImage;
     MImage.create(windowWidth, windowHeight, BG_COLOR);
 
-    Swarm Swarm_1 = Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_GREEN, windowHeight/4);
-    Swarm Swarm_2 = Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_BLUE, windowHeight/3);
-    Swarm Swarm_3 = Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_RED, windowHeight/1.5 - 50);
+    switch (SPAWN_TYPE) //RGB_TRI, RGB_CIRCLES, BW
+    {
+        case 1:
+            SwarmCtr = 3;
+            swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_GREEN, windowHeight/4));
+            swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_BLUE, windowHeight/3));
+            swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_RED, windowHeight/1.5 - 50));
+            break;
+        case 3:
+            SwarmCtr = 1;
+            swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER, COLOR_WHITE, 1));
+            break;
+    }
+
+    
 
     while (window.isOpen())
     {
@@ -229,16 +253,23 @@ int main()
 
         start = std::clock();
 
-        Swarm_1.act(MImage);
-        Swarm_2.act(MImage);
-        Swarm_3.act(MImage);
+        for (int i = 0; i<SwarmCtr; i++)
+        {
+            swarms[i].act(MImage);
+        }
 
         sf::Texture MTexture;
         MTexture.loadFromImage(MImage); 
         sf::Sprite sprite(MTexture);
         window.draw(sprite);
         window.display();
-
+        if (renderTexture)
+        {
+            if (itercounter%24 == 0)
+            {
+                MTexture.copyToImage().saveToFile("render/" + std::to_string(itercounter/24) + ".png");
+            }
+        }
         alltime += (double) CLOCKS_PER_SEC / (std::clock() - start);
         itercounter++;
     }
@@ -278,9 +309,29 @@ void evaporateImage(sf::Image& img){
 
 float getAvAreaValue(sf::Image& image, int x, int y, int a, sf::Color favColor){
     int avg = 0;
+    int f_x = 0;
+    int f_y = 0;
     for (int i = -a/2; i <= a/2; i++){
         for (int j = -a/2; j <= a/2; j++){
-            sf::Color colr = image.getPixel(x + i, y + j);
+            f_x = x+i;
+            f_y = y+j;
+            if (f_x > windowWidth-1)
+            {
+                f_x -= windowWidth;
+            }
+            else{if (f_x < 0)
+            {
+                f_x +=  windowWidth;
+            }}
+            if (f_y > windowHeight-1)
+            {
+                f_y -= windowHeight;
+            }
+            else{if (f_y < 0)
+            {
+                f_y +=  windowHeight;
+            }}
+            sf::Color colr = image.getPixel(f_x,f_y);
             if (colr != BG_COLOR)
             {
                 if ((colr.r / favColor.r == colr.g / favColor.g) && (colr.r / favColor.r == colr.b / favColor.b) && (colr.g / favColor.g == colr.b / favColor.b))
