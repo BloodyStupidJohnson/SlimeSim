@@ -12,7 +12,7 @@ const int windowWidth = 512, windowHeight = 512;
 const bool fullScreen = false;
 const bool renderTexture = false; //Save every 24th frame to drive, needs /render subdir created near program
 const int AGENTS_NUMBER = 10000;
-const int SPAWN_TYPE = 1; //RGB_TRI, BW
+const int SPAWN_TYPE = 3; //RGB_TRI, BW, R_VS_W
 const int AGENT_SPEED = 1;
 const int SENSOR_LENGTH = 8; // MUST be greater than SENSOR_SIZE
 const int SENSOR_SIZE = 2; //MUST be even
@@ -23,8 +23,8 @@ float TURN_RAND = 1.2; //1.2
 const float EVAPO_RATE = 0.997;//0.997
 // ==== Ironically, shaders lag on higher resoultions, so use with caution
 const bool USE_SHADERS = false; //i advise to switch TURN_RAND to 1.01 and EVAPO_RATE to 0.92
-const float BLUR_RAD = 0.001;
-const float CUTOUT_V = 0.01;
+const float BLUR_RAD = 0.002;
+const float CUTOUT_V = 0.005;
 
 
 //======Classic colors===================
@@ -243,6 +243,11 @@ int main()
         case 2:
             SwarmCtr = 1;
             swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER, COLOR_WHITE, 1));
+            break;
+        case 3:
+            SwarmCtr = 2;
+            swarms.push_back(Swarm(windowWidth/4, windowHeight/4, AGENTS_NUMBER/2, COLOR_WHITE, 1));
+            swarms.push_back(Swarm(windowWidth*3/4, windowHeight*3/4, AGENTS_NUMBER/2, COLOR_RED, 1));
             break;
     }
 
