@@ -10,17 +10,21 @@
 
 const int windowWidth = 512, windowHeight = 512;
 const bool fullScreen = false;
-const bool renderTexture = true;
+const bool renderTexture = false; //Save every 24th frame to drive, needs /render subdir created near program
 const int AGENTS_NUMBER = 10000;
-const int SPAWN_TYPE = 3; //RGB_TRI, RGB_CIRCLES, BW
+const int SPAWN_TYPE = 1; //RGB_TRI, BW
 const int AGENT_SPEED = 1;
 const int SENSOR_LENGTH = 8; // MUST be greater than SENSOR_SIZE
 const int SENSOR_SIZE = 2; //MUST be even
 const double SENSOR_ANGLE = M_PI/4;
-const int EDGE_L = 0;
+const int EDGE_L = 0; //not needed, but left just in case, adds a no-go zone on borders
 const double TURN_ANGLE = M_PI/8;
-const float TURN_RAND = 1.3;
-const float EVAPO_RATE = 0.997;
+float TURN_RAND = 1.2; //1.2
+const float EVAPO_RATE = 0.997;//0.997
+// ==== Ironically, shaders lag on higher resoultions, so use with caution
+const bool USE_SHADERS = false; //i advise to switch TURN_RAND to 1.01 and EVAPO_RATE to 0.92
+const float BLUR_RAD = 0.001;
+const float CUTOUT_V = 0.01;
 
 
 //======Classic colors===================
@@ -201,10 +205,11 @@ int main()
     time_t start;
     double alltime = 0;
     sf::RenderWindow window;
-    
+    sf::Shader blurShader;
+
     std::vector<Swarm> swarms;
     int SwarmCtr;
-    
+
     if (fullScreen)
     {
         window.create(sf::VideoMode(windowWidth, windowHeight), "ITS ALIIIIVE!",sf::Style::Fullscreen); //sf::Style::Fullscreen
@@ -213,13 +218,20 @@ int main()
     {
         window.create(sf::VideoMode(windowWidth, windowHeight), "ITS ALIIIIVE!"); //sf::Style::Fullscreen
     }
-    
-    
-    std::vector<Agent> agents;
-    
-    sf::Image MImage;
-    MImage.create(windowWidth, windowHeight, BG_COLOR);
 
+
+    std::vector<Agent> agents;
+
+    sf::Image MImage;
+    sf::Texture MTexture;
+    sf::RenderTexture RTexture;
+    MImage.create(windowWidth, windowHeight, BG_COLOR);
+    blurShader.loadFromFile("blur.frag", sf::Shader::Fragment);
+    blurShader.setUniform("texture",sf::Shader::CurrentTexture);
+    blurShader.setUniform("blur_radius",BLUR_RAD);
+    blurShader.setUniform("evaporate",EVAPO_RATE);
+    blurShader.setUniform("cutout",CUTOUT_V);
+    RTexture.create(windowWidth,windowHeight);
     switch (SPAWN_TYPE) //RGB_TRI, RGB_CIRCLES, BW
     {
         case 1:
@@ -228,13 +240,13 @@ int main()
             swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_BLUE, windowHeight/3));
             swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER/3, COLOR_RED, windowHeight/1.5 - 50));
             break;
-        case 3:
+        case 2:
             SwarmCtr = 1;
             swarms.push_back(Swarm(windowWidth/2, windowHeight/2, AGENTS_NUMBER, COLOR_WHITE, 1));
             break;
     }
 
-    
+
 
     while (window.isOpen())
     {
@@ -249,8 +261,20 @@ int main()
         }
 
         window.clear();
+        if (USE_SHADERS)
+        {
+        MTexture.loadFromImage(MImage);
+        sf::Sprite sprite0(MTexture);
+        RTexture.clear(BG_COLOR);
+        RTexture.draw(sprite0, &blurShader);
+        RTexture.display();
+        MTexture = RTexture.getTexture();
+        MImage = MTexture.copyToImage();
+        }
+        else{
         evaporateImage(MImage);
-
+        }
+	
         start = std::clock();
 
         for (int i = 0; i<SwarmCtr; i++)
@@ -258,8 +282,8 @@ int main()
             swarms[i].act(MImage);
         }
 
-        sf::Texture MTexture;
-        MTexture.loadFromImage(MImage); 
+
+        MTexture.loadFromImage(MImage);
         sf::Sprite sprite(MTexture);
         window.draw(sprite);
         window.display();
